@@ -1,129 +1,191 @@
-// App.jsx - Main component
 import { useState } from 'react'
+import './styles.css'
 
 export default function App() {
-  // Define categories with warm color associations
+  // MGA KATEGORYA - Warm color theme
   const categories = [
-    { name: 'MUST DO', color: '#FF6B6B' },       // Warm red
-    { name: 'SHOULD DO', color: '#FFA07A' },     // Light salmon
-    { name: 'COULD DO', color: '#FFD166' },      // Warm yellow
-    { name: 'IF I HAVE TIME', color: '#FF9A76' } // Peach
+    { id: 1, name: 'MUST DO', color: '#FF6B6B' },     // Dapat gawin agad (Pula)
+    { id: 2, name: 'SHOULD DO', color: '#FFA07A' },   // Dapat gawin (Light salmon)
+    { id: 3, name: 'COULD DO', color: '#FFD166' },    // Pwedeng gawin (Dilaw)
+    { id: 4, name: 'IF I HAVE TIME', color: '#FF9A76' } // Kung may oras (Peach)
   ]
 
-  // State for tasks grouped by category
+  // STATE MANAGEMENT - Pag-iimbak ng mga task
   const [tasks, setTasks] = useState(() => {
     const initialTasks = {}
     categories.forEach(cat => {
-      initialTasks[cat.name] = []
+      initialTasks[cat.id] = [] // Simula ng walang laman na tasks
     })
     return initialTasks
   })
 
-  // State for new task input
+  // Para sa bagong task
   const [newTask, setNewTask] = useState({ 
     text: '', 
-    category: categories[0].name 
+    categoryId: categories[0].id // Default sa unang kategorya
   })
 
-  // Add a new task to the selected category
+  // Para sa task na ine-edit
+  const [editingTask, setEditingTask] = useState(null)
+
+  /* ------------------- */
+  /*  MGA CRUD FUNCTION  */
+  /* ------------------- */
+
+  // CREATE - Pagdagdag ng task
   const addTask = () => {
-    if (!newTask.text.trim()) return // Prevent empty tasks
+    if (!newTask.text.trim()) return // Hindi pwede blanko
     
     setTasks(prev => ({
       ...prev,
-      [newTask.category]: [
-        ...prev[newTask.category],
+      [newTask.categoryId]: [
+        ...prev[newTask.categoryId],
         {
-          id: Date.now(),
+          id: Date.now(), // Gumamit ng timestamp para unique ID
           text: newTask.text,
           completed: false
         }
       ]
     }))
     
-    // Reset input field
-    setNewTask(prev => ({ ...prev, text: '' }))
+    setNewTask({ ...newTask, text: '' }) // Reset input
   }
 
-  // Toggle task completion status
-  const toggleTask = (category, id) => {
+  // UPDATE - Pag-edit ng task
+  const updateTask = () => {
+    if (!editingTask.text.trim()) return
+    
     setTasks(prev => ({
       ...prev,
-      [category]: prev[category].map(task =>
-        task.id === id ? { ...task, completed: !task.completed } : task
+      [editingTask.categoryId]: prev[editingTask.categoryId].map(task =>
+        task.id === editingTask.id ? { ...task, text: editingTask.text } : task
+      )
+    }))
+    
+    setEditingTask(null) // Tapos na mag-edit
+  }
+
+  // TOGGLE - Mark as complete/incomplete
+  const toggleComplete = (categoryId, taskId) => {
+    setTasks(prev => ({
+      ...prev,
+      [categoryId]: prev[categoryId].map(task =>
+        task.id === taskId ? { ...task, completed: !task.completed } : task
       )
     }))
   }
 
-  // Delete a task
-  const deleteTask = (category, id) => {
+  // DELETE - Pag-alis ng task
+  const deleteTask = (categoryId, taskId) => {
     setTasks(prev => ({
       ...prev,
-      [category]: prev[category].filter(task => task.id !== id)
+      [categoryId]: prev[categoryId].filter(task => task.id !== taskId)
     }))
   }
 
+  // Check kung mobile view
+  const isMobile = window.innerWidth < 768
+
   return (
     <div className="app">
+      {/* HEADER */}
       <header>
         <h1>Priority Task Manager</h1>
-        <p>Organize your tasks by importance</p>
+        <p>Organize tasks by urgency</p>
       </header>
 
-      {/* Task Input Section */}
+      {/* INPUT AREA */}
       <div className="task-input">
         <input
           type="text"
-          value={newTask.text}
-          onChange={(e) => setNewTask({...newTask, text: e.target.value})}
-          placeholder="What needs to be done?"
-          onKeyPress={(e) => e.key === 'Enter' && addTask()}
+          value={editingTask ? editingTask.text : newTask.text}
+          onChange={(e) => editingTask 
+            ? setEditingTask({...editingTask, text: e.target.value}) 
+            : setNewTask({...newTask, text: e.target.value})
+          }
+          placeholder={editingTask ? "I-edit ang task..." : "Magdagdag ng task..."}
+          onKeyPress={(e) => e.key === 'Enter' && (editingTask ? updateTask() : addTask())}
         />
-        
+
+        {/* Category Dropdown */}
         <select
-          value={newTask.category}
-          onChange={(e) => setNewTask({...newTask, category: e.target.value})}
+          value={editingTask ? editingTask.categoryId : newTask.categoryId}
+          onChange={(e) => {
+            const val = parseInt(e.target.value)
+            editingTask 
+              ? setEditingTask({...editingTask, categoryId: val}) 
+              : setNewTask({...newTask, categoryId: val})
+          }}
+          disabled={!!editingTask} // Hindi pwede palitan kategorya kapag nage-edit
         >
-          {categories.map(category => (
-            <option key={category.name} value={category.name}>
-              {category.name}
-            </option>
+          {categories.map(cat => (
+            <option key={cat.id} value={cat.id}>{cat.name}</option>
           ))}
         </select>
-        
-        <button onClick={addTask}>
-          Add Task
+
+        {/* Action Buttons */}
+        <button 
+          onClick={editingTask ? updateTask : addTask}
+          className={editingTask ? "update-btn" : "add-btn"}
+        >
+          {editingTask ? "Update" : "Add"}
         </button>
+
+        {/* Cancel Edit Button */}
+        {editingTask && (
+          <button 
+            onClick={() => setEditingTask(null)}
+            className="cancel-btn"
+          >
+            Cancel
+          </button>
+        )}
       </div>
 
-      {/* Categories Display */}
-      <div className="categories-container">
+      {/* CATEGORY GRID */}
+      <div className={`categories-grid ${isMobile ? "mobile-view" : ""}`}>
         {categories.map(category => (
           <div 
-            key={category.name} 
+            key={category.id} 
             className="category"
             style={{ borderTop: `4px solid ${category.color}` }}
           >
             <h2>{category.name}</h2>
             
-            <div className="tasks-list">
-              {tasks[category.name].length === 0 ? (
-                <p className="empty-message">No tasks yet</p>
+            {/* Task List */}
+            <div className="task-list">
+              {tasks[category.id].length === 0 ? (
+                <p className="empty-state">Walang task dito</p>
               ) : (
-                tasks[category.name].map(task => (
+                tasks[category.id].map(task => (
                   <div 
                     key={task.id} 
                     className={`task ${task.completed ? 'completed' : ''}`}
                   >
-                    <span onClick={() => toggleTask(category.name, task.id)}>
+                    <span onClick={() => toggleComplete(category.id, task.id)}>
                       {task.text}
                     </span>
-                    <button 
-                      onClick={() => deleteTask(category.name, task.id)}
-                      className="delete-btn"
-                    >
-                      ×
-                    </button>
+                    
+                    {/* Action Buttons per Task */}
+                    <div className="task-actions">
+                      <button 
+                        onClick={() => setEditingTask({
+                          id: task.id,
+                          text: task.text,
+                          categoryId: category.id
+                        })}
+                        className="edit-btn"
+                      >
+                        ✏️
+                      </button>
+                      
+                      <button 
+                        onClick={() => deleteTask(category.id, task.id)}
+                        className="delete-btn"
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
